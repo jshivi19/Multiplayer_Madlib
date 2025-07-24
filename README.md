@@ -20,25 +20,9 @@ A fun multiplayer Mad Lib game that runs on a local network using SSL encryption
 
 ## 🔧 Setup Instructions
 
-### 1. Generate SSL Certificates
 
-First, you need to create SSL certificates for secure communication:
 
-```bash
-# Generate private key
-openssl genrsa -out key.pem 2048
-
-# Generate certificate signing request
-openssl req -new -key key.pem -out cert.csr
-
-# Generate self-signed certificate
-openssl x509 -req -days 365 -in cert.csr -signkey key.pem -out cert.pem
-
-# Create CA certificate (copy cert.pem for simple setup)
-cp cert.pem ca.pem
-```
-
-### 2. Configure Network Settings
+### 1 . Configure Network Settings
 
 Update the `HOST` variable in both server and client files:
 
@@ -200,115 +184,6 @@ Client Console:
 > ------------------------------------------------------------
 ```
 
-## 📁 Complete Code Files
-
-### Server Code (server.py)
-The server handles all game logic, player connections, and SSL encryption. Key features:
-- SSL/TLS secure connections
-- Thread-safe client management
-- Round-based gameplay with voting system
-- Automatic disconnection handling
-- Scoreboard tracking and winner determination
-
-### Client Code (client.py)
-Based on your description, the client should look like this:
-
-```python
-import socket
-import ssl
-
-game_code = "1234"
-HOST = "192.168.247.85"  # The server's hostname or IP address
-PORT = 65432  # The port used by the server
-
-def main():
-    try:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-            context.load_verify_locations(cafile="ca.pem")
-            try:
-                ssl_socket = context.wrap_socket(s, server_hostname=HOST)
-                ssl_socket.connect((HOST, PORT))
-                print("Connected to server!")
-            except ConnectionRefusedError:
-                print("Connection refused. Please try again later.")
-                return
-            
-            client_ip_address = s.getsockname()[0]
-            
-            # Input and send username to server
-            username = input("Enter your username: ")
-            ssl_socket.sendall(f"{username}".encode())
-            
-            # Receive joined acknowledgment
-            print(ssl_socket.recv(1024).decode())
-            
-            # Game Code
-            ssl_socket.sendall(game_code.encode())
-            
-            # Run rounds
-            while True:
-                # Receive question
-                question = ssl_socket.recv(1024).decode()
-                if not question:
-                    print("Connection closed by server.")
-                    break
-                
-                if question.startswith("Game Over!"):
-                    print(question)
-                    exit()
-                
-                print("\n------------------------------------------------------------")
-                print("Question:", question)
-                print("------------------------------------------------------------")
-                answer = input("Enter your answer: ")
-                
-                # Send answer to the server
-                ssl_socket.sendall(answer.encode())
-                print("\nSent answer! Waiting for others to answer...")
-                
-                # Receive and display voting options
-                voting_options = dict(eval(ssl_socket.recv(1024).decode()))
-                print("\n------------------------------------------------------------")
-                print("Voting Options:")
-                print("------------------------------------------------------------")
-                
-                # Uncomment if you want to remove the client's own answer from the voting options
-                # voting_options.pop(client_ip_address)
-                
-                voting_options_list = list(voting_options.items())
-                for index, (player, answer) in enumerate(voting_options_list):
-                    print(f"    {index+1}: {answer}")
-                
-                # User inputs the index
-                while True:
-                    try:
-                        choice = int(input("\nVote for an option: "))
-                        if choice < 1 or choice > len(voting_options):
-                            print("Invalid choice. Please enter a number between 1 and", len(voting_options))
-                        else:
-                            break  # a valid choice is entered
-                    except ValueError:
-                        print("Invalid input. Please enter an integer.")
-                
-                # Get the key-value pair at the given index
-                player, answer = voting_options_list[choice-1]
-                print(f"You selected the answer by {player}: {answer}")
-                
-                # Send the player username that the client voted for
-                ssl_socket.sendall(player.encode())
-                
-                # Display updated Scoreboard
-                scoreboard = ssl_socket.recv(1024).decode()
-                print("\n------------------------------------------------------------")
-                print("Updated Scoreboard:", scoreboard)
-                print("------------------------------------------------------------\n")
-    except Exception as e:
-        print(f"An error occurred: {e}")
-
-if __name__ == "__main__":
-    main()
-```
 
 ## 🔧 Technical Details
 
